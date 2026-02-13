@@ -7,36 +7,56 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔥 Create HTTP server
 const server = http.createServer(app);
 
-// 🔥 Attach Socket.IO to HTTP server
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
+  cors: { origin: "*" },
 });
 
-const emailToSocketMapping = new Map();
+const emailToSocketMap = new Map();
+const socketToEmailMap = new Map();
 
 io.on("connection", (socket) => {
   console.log("New connection:", socket.id);
 
-  socket.on("join-room", (data) => {
-    const { roomId, emailId } = data;
+  socket.on("join-room", ({ roomId, emailId }) => {
+    emailToSocketMap.set(emailId, socket.id);
+    socketToEmailMap.set(socket.id, emailId);
 
-    console.log("User joined:", emailId,"room -",roomId);
-
-    emailToSocketMapping.set(emailId, socket.id);
+    socket.join(roomId);
 
     socket.emit("joined-room", { roomId });
+
     socket.broadcast.to(roomId).emit("User-joined", {
       emailId,
     });
   });
+
+  socket.on("call-user", ({ emailId, offer }) => {
+    const targetSocketId = emailToSocketMap.get(emailId);
+
+    io.to(targetSocketId).emit("incoming-call", {
+      from: socketToEmailMap.get(socket.id),
+      offer,
+    });
+  });
+
+  socket.on("call-accepted", ({ emailId, ans }) => {
+    const targetSocketId = emailToSocketMap.get(emailId);
+
+    io.to(targetSocketId).emit("call-accepted", { ans });
+  });
+
+  // 🔥 ICE relay
+  socket.on("ice-candidate", ({ emailId, candidate }) => {
+    const targetSocketId = emailToSocketMap.get(emailId);
+
+    io.to(targetSocketId).emit("ice-candidate", {
+      candidate,
+    });
+  });
 });
 
-// 🔥 Listen using HTTP server (not app.listen + not io.listen)
 server.listen(8001, () => {
-  console.log("Server + Socket running on 8001");
+  console.log("Server running on 8001");
 });

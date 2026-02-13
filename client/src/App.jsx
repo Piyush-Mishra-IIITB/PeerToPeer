@@ -9,14 +9,18 @@ import React from 'react';
 import { useMemo } from 'react';
 import {io} from "socket.io-client";
 import SocketProvider from "./providers/Socket.jsx";
+import PeerProvider from "./providers/Peer.jsx";
+
 function App() {
   return (
     <>
       <SocketProvider>
+        <PeerProvider>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/room/:roomId" element={<Room/>}/>
         </Routes>
+        </PeerProvider>
       </SocketProvider>
     </>
   );

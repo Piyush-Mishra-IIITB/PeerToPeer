@@ -1,27 +1,44 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import  {useSocket}  from '../providers/Socket';
-import {useEffect,useState} from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSocket } from "../providers/Socket";
+
 function Home() {
-    const navigate=useNavigate();
-    const [email,setEmail]=useState("");
-    const [code, setCode]=useState("");
-    const {socket} =useSocket();
-    const handleRoomJoined=({roomId})=>{
-        console.log("room-joined",roomId);
-        navigate(`/room/${roomId}`);
+  const navigate = useNavigate();
+  const { socket } = useSocket();
+
+  const [email, setEmail] = useState("");
+  const [roomId, setRoomId] = useState("");
+
+  const handleJoinedRoom = useCallback(({ roomId }) => {
+    navigate(`/room/${roomId}`);
+  }, [navigate]);
+
+  useEffect(() => {
+    socket.on("joined-room", handleJoinedRoom);
+    return () => {
+      socket.off("joined-room", handleJoinedRoom);
     };
-    useEffect(()=>{
-        socket.on("joined-room",handleRoomJoined);
-    },[socket]);
-    const handleRoomJoin=()=>{
-        socket.emit("join-room",{emailId:email,roomId:code});
-    };
-    return ( <div>
-        <input value={email} onChange={e=> setEmail(e.target.value)} placeholder='Enter your email here'/>
-       <br /> <input value={code} onChange={e=> setCode(e.target.value)} placeholder='Enter Room Code'/>
-       <br /> <button onClick={handleRoomJoin}>Enter Room</button>
-    </div> );
+  }, [socket, handleJoinedRoom]);
+
+  const joinRoom = () => {
+    socket.emit("join-room", { emailId: email, roomId });
+  };
+
+  return (
+    <div>
+      <input
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        placeholder="Room ID"
+        value={roomId}
+        onChange={(e) => setRoomId(e.target.value)}
+      />
+      <button onClick={joinRoom}>Join Room</button>
+    </div>
+  );
 }
 
 export default Home;
